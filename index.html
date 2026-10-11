@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="description" content="Dashboard statusu konta OpenRouter i OpenAI - saldo kredytów i zużycie">
+<title>Status Konta AI — OpenRouter &amp; OpenAI</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --bg:#0b1220; --bg2:#0f172a; --card:#131c31; --card2:#1a2540;
+    --border:#24314f; --text:#e2e8f0; --muted:#8896b3; --muted2:#5b6a8a;
+    --or:#f59e0b; --or-soft:rgba(245,158,11,.14); --or-line:#fbbf24;
+    --oai:#10b981; --oai-soft:rgba(16,185,129,.14); --oai-line:#34d399;
+    --danger:#f87171; --ok:#34d399; --warn:#fbbf24;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;background:radial-gradient(1200px 600px at 80% -10%,rgba(16,185,129,.08),transparent 60%),radial-gradient(1000px 500px at 10% -10%,rgba(245,158,11,.08),transparent 55%),var(--bg);padding:24px 16px 60px}
+  .wrap{max-width:1060px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#14b8a6,#f59e0b);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#0b1220;box-shadow:0 6px 20px rgba(20,184,166,.25)}
+  .brand h1{font-size:20px;font-weight:700;letter-spacing:-.01em}
+  .brand p{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .hdr-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btn{border:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 14px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{background:var(--card2);border-color:#33446b}
+  .btn.primary{background:linear-gradient(135deg,#14b8a6,#0d9488);border-color:transparent;color:#041210}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn svg{width:15px;height:15px;flex:none}
+  .toggle-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);user-select:none;cursor:pointer}
+  .toggle-row input{accent-color:#14b8a6;width:15px;height:15px;cursor:pointer}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+  .card.or::before{background:linear-gradient(90deg,var(--or),#fcd34d)}
+  .card.oai::before{background:linear-gradient(90deg,var(--oai),#6ee7b7)}
+  .card-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .prov-badge{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:none}
+  .or .prov-badge{background:var(--or-soft);color:var(--or-line);border:1px solid rgba(245,158,11,.3)}
+  .oai .prov-badge{background:var(--oai-soft);color:var(--oai-line);border:1px solid rgba(16,185,129,.3)}
+  .card-head h2{font-size:16px;font-weight:700}
+  .card-head .sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .via-tag{margin-left:auto;font-size:10.5px;padding:3px 8px;border-radius:999px;background:var(--card2);color:var(--muted);border:1px solid var(--border);white-space:nowrap}
+  .via-tag.ok{color:var(--ok);border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
+  .via-tag.warn{color:var(--warn);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+
+  label.field{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.02em}
+  .input-row{display:flex;gap:8px;margin-bottom:12px}
+  .input-wrap{position:relative;flex:1}
+  input[type=password],input[type=text],select{width:100%;background:#0a1120;border:1px solid var(--border);border-radius:10px;padding:11px 38px 11px 12px;color:var(--text);font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;outline:none;transition:.15s}
+  input:focus,select:focus{border-color:#3b5b8f;box-shadow:0 0 0 3px rgba(59,91,143,.2)}
+  select{padding:11px 12px;font-family:inherit;cursor:pointer}
+  .eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px}
+  .eye:hover{color:var(--text);background:var(--card2)}
+  .eye svg{width:16px;height:16px;display:block}
+  .check-btn{flex:none;padding:0 16px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;border:none;transition:.15s;display:inline-flex;align-items:center;gap:7px;min-height:42px}
+  .or .check-btn{background:var(--or);color:#1a1206}
+  .or .check-btn:hover{filter:brightness(1.07)}
+  .oai .check-btn{background:var(--oai);color:#04140d}
+  .oai .check-btn:hover{filter:brightness(1.07)}
+  .check-btn:disabled{opacity:.55;cursor:wait}
+  .spinner{width:14px;height:14px;border:2px solid rgba(0,0,0,.25);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;flex:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .result{margin-top:6px;min-height:60px}
+  .result .placeholder{font-size:12.5px;color:var(--muted2);padding:14px;border:1px dashed var(--border);border-radius:10px;text-align:center}
+  .stat-big{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:4px 0 2px}
+  .stat-big small{font-size:14px;font-weight:600;color:var(--muted)}
+  .stat-row{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+  .stat-pill{flex:1;min-width:110px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px 11px}
+  .stat-pill .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .stat-pill .v{font-size:15px;font-weight:700;margin-top:3px}
+  .bar{height:8px;background:#0a1120;border-radius:99px;overflow:hidden;margin:8px 0 4px;border:1px solid var(--border)}
+  .bar > i{display:block;height:100%;border-radius:99px;transition:width .6s ease}
+  .or .bar > i{background:linear-gradient(90deg,#b45309,var(--or),#fcd34d)}
+  .oai .bar > i{background:linear-gradient(90deg,#047857,var(--oai),#6ee7b7)}
+  .bar-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+  .chip{display:inline-block;font-size:11px;padding:3px 9px;border-radius:999px;font-weight:600;margin-right:6px;margin-top:4px}
+  .chip.free{background:rgba(251,191,36,.12);color:#fcd34d;border:1px solid rgba(251,191,36,.3)}
+  .chip.paid{background:rgba(52,211,153,.12);color:#6ee7b7;border:1px solid rgba(52,211,153,.3)}
+  .err-box{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.35);border-radius:10px;padding:12px 14px;font-size:12.5px;color:#fca5a5;line-height:1.5}
+  .err-box a{color:#fca5a5;text-decoration:underline}
+  .info-box{background:rgba(59,130,246,.08);border:1px solid rgba(96,165,250,.3);border-radius:10px;padding:10px 12px;font-size:11.5px;color:#93c5fd;line-height:1.5;margin-top:10px}
+  .breakdown{margin-top:12px}
+  .breakdown h4{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;font-weight:700}
+  .bd-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+  .bd-row .name{flex:0 0 42%;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:ui-monospace,Menlo,monospace;font-size:11px}
+  .bd-row .track{flex:1;height:6px;background:#0a1120;border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+  .bd-row .track > i{display:block;height:100%;background:var(--oai-line);border-radius:99px}
+  .or .bd-row .track > i{background:var(--or-line)}
+  .bd-row .val{flex:0 0 62px;text-align:right;font-weight:600;color:var(--muted);font-size:11.5px}
+  .spark{display:flex;align-items:flex-end;gap:2px;height:44px;margin-top:6px;padding:4px 0}
+  .spark i{flex:1;background:linear-gradient(180deg,var(--oai-line),rgba(52,211,153,.25));border-radius:2px 2px 0 0;min-height:2px;transition:.2s}
+  .or .spark i{background:linear-gradient(180deg,var(--or-line),rgba(251,191,36,.25))}
+  .spark-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted2);margin-top:2px}
+  .updated{font-size:11px;color:var(--muted2);margin-top:10px;text-align:right}
+  footer{margin-top:26px;text-align:center;font-size:11.5px;color:var(--muted2);line-height:1.7}
+  footer a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted2)}
+  footer a:hover{color:var(--text)}
+  .sec-note{display:inline-flex;align-items:center;gap:6px;margin-top:6px}
+  .install-hint{display:none;margin-top:10px;font-size:12px;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .settings{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px}
+  .settings h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text)}
+  .settings .hint{font-size:11.5px;color:var(--muted2);margin-top:8px;line-height:1.6}
+  .settings .hint a{color:var(--muted)}
+  .warn-banner{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:11px 14px;font-size:12.5px;color:#fcd34d;line-height:1.6;margin-bottom:18px}
+  .warn-banner b{color:#fde68a}
+  .warn-banner a{color:#fcd34d;text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">$</div>
+      <div>
+        <h1>Status Konta AI</h1>
+        <p>Saldo i zużycie — OpenRouter &amp; OpenAI</p>
+      </div>
+    </div>
+    <div class="hdr-actions">
+      <label class="toggle-row" title="Automatyczne odświeżanie co 60 sekund">
+        <input type="checkbox" id="autoRefresh"> Auto (60s)
+      </label>
+      <button class="btn primary" id="checkAll">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        Sprawdź oba
+      </button>
+      <button class="btn" id="settingsBtn" title="Ustawienia zaawansowane">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Ustawienia
+      </button>
+      <button class="btn" id="installBtn" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        Zainstaluj aplikację
+      </button>
+    </div>
+  </header>
+
+  <div class="warn-banner" id="proxyBanner" style="display:none">
+    <b>Proxy niedostępne.</b> Odczyt zużycia OpenAI wymaga serwerowego proxy (przeglądarka blokuje bezpośrednie połączenie z api.openai.com).
+    Rozwiązania: (1) wdróż przez <b>Netlify CLI</b> lub Git (funkcje serwerowe wdrażają się automatycznie), albo (2) wklej adres własnego proxy w <b>Ustawieniach</b> — do paczki dołączono gotowy skrypt <b>cloudflare-worker-proxy.js</b> (wdrożenie przez wklejenie kodu, za darmo).
+  </div>
+
+  <div class="settings" id="settingsPanel" style="display:none">
+    <h3>Ustawienia zaawansowane — adres proxy (opcjonalnie)</h3>
+    <label class="field" for="proxyUrl">Jeśli nie używasz funkcji Netlify, wklej tutaj adres własnego proxy (np. Cloudflare Worker)</label>
+    <div class="input-row" style="margin-bottom:0">
+      <div class="input-wrap">
+        <input type="text" id="proxyUrl" placeholder="https://twoj-proxy.workers.dev" autocomplete="off" spellcheck="false" style="padding-right:12px">
+      </div>
+      <button class="btn primary" id="saveProxy" style="flex:none">Zapisz</button>
+    </div>
+    <div class="hint">
+      Do pliku ZIP dołączono skrypt <b>cloudflare-worker-proxy.js</b> — wklej go w Cloudflare Dashboard → Workers &amp; Pages → Create → Worker, a następnie wklej tutaj adres worker-a.
+      Proxy jest wymagane tylko do odczytu OpenAI; OpenRouter działa bezpośrednio. Adres proxy jest zapisywany wyłącznie w Twojej przeglądarce (localStorage).
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- OPENROUTER -->
+    <section class="card or" id="card-or">
+      <div class="card-head">
+        <div class="prov-badge">OR</div>
+        <div>
+          <h2>OpenRouter</h2>
+          <div class="sub">Saldo konta + limit klucza + zużycie</div>
+        </div>
+        <span class="via-tag" id="via-or">—</span>
+      </div>
+
+      <label class="field" for="key-or">Klucz API OpenRouter (sk-or-v1-…)</label>
+      <div class="input-row">
+        <div class="input-wrap">
+          <input type="password" id="key-or" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false">
+          <button class="eye" data-target="key-or" aria-label="Pokaż/ukryj klucz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <button class="check-btn" id="btn-or">Sprawdź</button>
+      </div>
+
+      <div class="result" id="result-or">
+        <div class="placeholder">Wprowadź klucz i naciśnij „Sprawdź”.<br>Klucz nie jest zapisywany ani wysyłany na żaden serwer pośredniczący.</div>
+      </div>
+    </section>
+
+    <!-- OPENAI -->
+    <section class="card oai" id="card-oai">
+      <div class="card-head">
+        <div class="prov-badge">AI</div>
+        <div>
+          <h2>OpenAI</h2>
+          <div class="sub">Zużycie w okresie (dzienne koszty)</div>
+        </div>
+        <span class="via-tag" id="via-oai">—</span>
+      </div>
+
+      <label class="field" for="key-oai">Klucz API OpenAI (sk-…)</label>
+      <div class="input-row">
+        <div class="input-wrap">
+          <input type="password" id="key-oai" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          <button class="eye" data-target="key-oai" aria-label="Pokaż/ukryj klucz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <button class="check-btn" id="btn-oai">Sprawdź</button>
+      </div>
+
+      <label class="field" for="range-oai">Zakres czasowy</label>
+      <div class="input-row" style="margin-bottom:4px">
+        <select id="range-oai">
+          <option value="7">Ostatnie 7 dni</option>
+          <option value="30" selected>Ostatnie 30 dni</option>
+          <option value="90">Ostatnie 90 dni</option>
+          <option value="ytd">Od początku roku</option>
+        </select>
+      </div>
+
+      <div class="result" id="result-oai">
+        <div class="placeholder">Wprowadź klucz i naciśnij „Sprawdź”.<br>OpenAI nie udostępnia pozostałego salda przez API — pokazywane jest zużycie w wybranym okresie.</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="install-hint" id="installHint">
+    Wskazówka: możesz zainstalować tę aplikację na telefonie/komputerze (PWA) — użyj przycisku „Zainstaluj aplikację” lub opcji „Dodaj do ekranu głównego” w menu przeglądarki.
+  </div>
+
+  <footer>
+    <div>
+      <span class="sec-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Klucze API są przechowywane tylko w pamięci przeglądarki i wysyłane bezpośrednio do oficjalnych API (lub przez Twoje funkcje Netlify). Nigdy nie są logowane ani zapisywane.
+      </span>
+    </div>
+    <div style="margin-top:8px">
+      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">Klucze OpenRouter</a> ·
+      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Klucze OpenAI</a> ·
+      <a href="https://platform.openai.com/billing" target="_blank" rel="noopener">Panel rozliczeniowy OpenAI</a>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- helpers ---------- */
+  const $ = id => document.getElementById(id);
+  const fmtUSD = n => (n==null||isNaN(n)) ? "—" : "$" + Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:4});
+  const fmtUSDFull = n => (n==null||isNaN(n)) ? "—" : "$" + Number(n).toLocaleString("en-US",{minimumFractionDigits:4,maximumFractionDigits:6});
+  const todayISO = () => { const d=new Date(); return d.toISOString().slice(0,10); };
+  const daysAgoISO = n => { const d=new Date(Date.now()-n*864e5); return d.toISOString().slice(0,10); };
+  const ytdISO = () => { const d=new Date(); return d.getUTCFullYear()+"-01-01"; };
+  const tsToDate = ts => { const d=new Date(ts*1000); return d.toISOString().slice(5,10); };
+
+  function setVia(id, mode){
+    const el = $(id);
+    if(mode==="proxy"){ el.textContent="przez funkcję serwerową"; el.className="via-tag ok"; }
+    else if(mode==="direct"){ el.textContent="połączenie bezpośrednie"; el.className="via-tag warn"; }
+    else { el.textContent="—"; el.className="via-tag"; }
+  }
+
+  function setLoading(prov, on){
+    const btn = $("btn-"+prov);
+    btn.disabled = on;
+    btn.innerHTML = on ? '<span class="spinner"></span> Sprawdzam…' : "Sprawdź";
+  }
+
+  function errBox(msg){ return '<div class="err-box">'+msg+'</div>'; }
+
+  /* ---------- eye toggles ---------- */
+  document.querySelectorAll(".eye").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const inp = $(b.dataset.target);
+      inp.type = inp.type==="password" ? "text" : "password";
+    });
+  });
+
+  /* ---------- adres proxy (opcjonalny, np. Cloudflare Worker) ---------- */
+  let proxyUrl = "";
+  try { proxyUrl = localStorage.getItem("ai-status-proxy") || ""; } catch(e){}
+  function proxyUrlFor(prov){
+    const p = proxyUrl.trim().replace(/\/+$/,"");
+    if(p) return p + "/" + prov;               // np. https://x.workers.dev/openai
+    return "/.netlify/functions/" + prov + "-status";
+  }
+
+  /* ---------- fetch with proxy fallback ---------- */
+  // 1) try Netlify function (proxy, avoids CORS, hides key from browser logs)
+  // 2) if 404 / network error -> fall back to direct browser fetch
+  async function fetchStatus(prov, payload){
+    try{
+      const res = await fetch(proxyUrlFor(prov),{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      if(res.status===404) throw new Error("NO_FUNCTION");
+      const data = await res.json().catch(()=>({error:"Nieprawidłowa odpowiedź serwera"}));
+      if(!res.ok) return { ok:false, error: (data && data.error) || ("Błąd "+res.status), via:"proxy", status:res.status };
+      return { ok:true, data, via:"proxy" };
+    }catch(e){
+      if(e.message!=="NO_FUNCTION" && !(e instanceof TypeError)) throw e;
+      // direct fallback
+      const data = await directFetch(prov, payload);
+      return { ...data, via:"direct" };
+    }
+  }
+
+  async function directFetch(prov, payload){
+    try{
+      if(prov==="openrouter"){
+        // OpenRouter: dwa endpointy równolegle — /key (limit klucza + zużycie) i /credits (saldo konta)
+        const h = { "Authorization":"Bearer "+payload.key };
+        const [resKey, resCredits] = await Promise.all([
+          fetch("https://openrouter.ai/api/v1/key",{headers:h}),
+          fetch("https://openrouter.ai/api/v1/credits",{headers:h})
+        ]);
+        const keyData = await resKey.json().catch(()=>null);
+        const creditsData = await resCredits.json().catch(()=>null);
+        if(!resKey.ok && !resCredits.ok){
+          const msg = (keyData&&keyData.error&&keyData.error.message) || (creditsData&&creditsData.error&&creditsData.error.message) || ("Błąd HTTP "+resKey.status);
+          return { ok:false, error:msg, status:resKey.status };
+        }
+        return { ok:true, data:{
+          key: keyData&&keyData.data ? keyData.data : null,
+          credits: creditsData&&creditsData.data ? creditsData.data : null
+        }};
+      }
+      // OpenAI
+      const end = todayISO();
+      const start = payload.range==="ytd" ? ytdISO() : daysAgoISO(Number(payload.range)||30);
+      const res = await fetch("https://api.openai.com/v1/usage/daily_costs?start_date="+start+"&end_date="+end,{
+        headers:{ "Authorization":"Bearer "+payload.key }
+      });
+      const data = await res.json().catch(()=>({error:"Nieprawidłowa odpowiedź API"}));
+      if(!res.ok){
+        let msg = "Błąd HTTP "+res.status;
+        if(data && data.error){ msg = (typeof data.error==="string") ? data.error : (data.error.message || msg); }
+        return { ok:false, error:msg, status:res.status };
+      }
+      return { ok:true, data };
+    }catch(e){
+      if(e instanceof TypeError){
+        return { ok:false, error:"CORS", status:0 };
+      }
+      return { ok:false, error:e.message, status:0 };
+    }
+  }
+
+  /* ---------- OPENROUTER ---------- */
+  async function checkOpenRouter(){
+    const key = $("key-or").value.trim();
+    const resEl = $("result-or");
+    if(!key){ resEl.innerHTML = errBox("Wprowadź klucz API OpenRouter."); setVia("via-or",null); return; }
+    setLoading("or",true);
+    try{
+      const r = await fetchStatus("openrouter",{key});
+      setVia("via-or", r.via);
+      if(!r.ok){
+        let msg = r.error || "Nieznany błąd";
+        if(r.status===401) msg = "Nieprawidłowy klucz API (401). Sprawdź czy skopiowałeś cały klucz (sk-or-v1-…).";
+        else if(r.status===429) msg = "Przekroczono limit żądań (429). Spróbuj za chwilę.";
+        resEl.innerHTML = errBox(msg);
+      }else{
+        resEl.innerHTML = renderOpenRouter(r.data);
+      }
+    }catch(e){
+      resEl.innerHTML = errBox("Błąd połączenia: "+e.message);
+    }finally{
+      setLoading("or",false);
+    }
+  }
+
+  function renderOpenRouter(resp){
+    // Nowy format (v1.1): { key: {...}, credits: {...} }
+    //   key:      /api/v1/key      -> limit per-key, limit_remaining, usage_daily/weekly/monthly
+    //   credits:  /api/v1/credits  -> total_credits, total_usage (RZECZYWISTE SALDO KONTA)
+    // Kompatybilność wsteczna: jeśli dostaliśmy stary format {data:{...}}, opakuj.
+    let key = resp.key, credits = resp.credits;
+    if(!key && !credits && resp.data){ key = resp.data; }
+    key = key || {};
+    credits = credits || null;
+
+    const free = !!key.is_free_tier;
+    const usage = Number(key.usage)||0;
+    const keyLimit = (key.limit==null) ? null : Number(key.limit);
+    const keyRemaining = (key.limit_remaining==null) ? null : Number(key.limit_remaining);
+    const rl = key.rate_limit||{};
+    const fm = key.free_model_daily_requests;
+
+    // Saldo konta (najważniejsza liczba) = total_credits - total_usage
+    let accountBalance = null, totalCredits = null, totalUsage = null;
+    if(credits){
+      totalCredits = Number(credits.total_credits);
+      totalUsage = Number(credits.total_usage);
+      if(!isNaN(totalCredits) && !isNaN(totalUsage)) accountBalance = totalCredits - totalUsage;
+    }
+
+    // Główna liczba: saldo konta (jeśli dostępne), w przeciwnym razie pozostałość z limitu klucza
+    let bigVal, bigLabel;
+    if(accountBalance!=null){ bigVal = fmtUSD(accountBalance); bigLabel = "saldo konta"; }
+    else if(keyRemaining!=null){ bigVal = fmtUSD(keyRemaining); bigLabel = "pozostało z limitu klucza"; }
+    else if(keyLimit!=null){ bigVal = fmtUSD(Math.max(0,keyLimit-usage)); bigLabel = "pozostało z limitu klucza"; }
+    else { bigVal = "bez limitu"; bigLabel = "klucz"; }
+
+    let html = '<div class="stat-big">'+bigVal+' <small>'+bigLabel+'</small></div>';
+    html += '<span class="chip '+(free?"free":"paid")+'">'+(free?"Darmowy tier":"Konto płatne")+'</span>';
+    if(key.label) html += '<span class="chip paid">Klucz: '+escapeHtml(key.label)+'</span>';
+    if(key.limit_reset) html += '<span class="chip free">Reset limitu: '+escapeHtml(key.limit_reset)+'</span>';
+
+    html += '<div class="stat-row">';
+    if(accountBalance!=null){
+      html += '<div class="stat-pill"><div class="k">Saldo konta</div><div class="v">'+fmtUSD(accountBalance)+'</div></div>';
+      html += '<div class="stat-pill"><div class="k">Doładowano łącznie</div><div class="v">'+fmtUSD(totalCredits)+'</div></div>';
+    }
+    html += '<div class="stat-pill"><div class="k">Zużyto łącznie</div><div class="v">'+fmtUSDFull(totalUsage!=null?totalUsage:usage)+'</div></div>';
+    if(key.usage_daily!=null) html += '<div class="stat-pill"><div class="k">Dzisiaj (UTC)</div><div class="v">'+fmtUSDFull(key.usage_daily)+'</div></div>';
+    if(key.usage_weekly!=null) html += '<div class="stat-pill"><div class="k">Ten tydzień</div><div class="v">'+fmtUSDFull(key.usage_weekly)+'</div></div>';
+    if(key.usage_monthly!=null) html += '<div class="stat-pill"><div class="k">Ten miesiąc</div><div class="v">'+fmtUSDFull(key.usage_monthly)+'</div></div>';
+    html += '<div class="stat-pill"><div class="k">Limit klucza</div><div class="v">'+(keyLimit!=null?fmtUSD(keyLimit):"brak limitu")+'</div></div>';
+    if(keyRemaining!=null) html += '<div class="stat-pill"><div class="k">Pozostało z limitu</div><div class="v">'+fmtUSD(keyRemaining)+'</div></div>';
+    if(rl.requests) html += '<div class="stat-pill"><div class="k">Rate limit</div><div class="v">'+rl.requests+' / '+rl.interval+'</div></div>';
+    html += '</div>';
+
+    // Pasek postępu: wykorzystanie środków konta (jeśli dostępne), w przeciwnym razie limitu klucza
+    if(accountBalance!=null && totalCredits>0){
+      const pct = Math.min(100, totalUsage/totalCredits*100);
+      const color = pct>90?"var(--danger)":pct>70?"var(--warn)":"var(--ok)";
+      html += '<div class="bar"><i style="width:'+pct.toFixed(1)+'%"></i></div>';
+      html += '<div class="bar-labels"><span>Wykorzystano '+pct.toFixed(1)+'% doładowanych środków</span><span style="color:'+color+'">'+fmtUSDFull(totalUsage)+' / '+fmtUSD(totalCredits)+'</span></div>';
+    }else if(keyLimit!=null){
+      const pct = Math.min(100, usage/keyLimit*100);
+      html += '<div class="bar"><i style="width:'+pct.toFixed(1)+'%"></i></div>';
+      html += '<div class="bar-labels"><span>Wykorzystano '+pct.toFixed(1)+'% limitu klucza</span><span>'+fmtUSDFull(usage)+' / '+fmtUSD(keyLimit)+'</span></div>';
+    }
+
+    if(fm && fm.limit){
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--muted)">Darmowe modele: <b style="color:var(--text)">'+(fm.remaining??"—")+'</b> / '+fm.limit+' żądań dzisiaj</div>';
+    }
+    if(accountBalance==null){
+      html += '<div class="info-box">Nie udało się odczytać salda konta z endpointu <b>/credits</b> (wymaga zwykłego klucza API). Pokazany jest limit wydatków przypisany do tego klucza, który może być wyższy niż rzeczywiste saldo. Sprawdź saldo w <a href="https://openrouter.ai/credits" target="_blank" rel="noopener" style="color:#93c5fd">panelu OpenRouter</a>.</div>';
+    }
+    html += '<div class="updated">Stan na: '+new Date().toLocaleString("pl-PL")+'</div>';
+    return html;
+  }
+
+  /* ---------- OPENAI ---------- */
+  async function checkOpenAI(){
+    const key = $("key-oai").value.trim();
+    const resEl = $("result-oai");
+    const range = $("range-oai").value;
+    if(!key){ resEl.innerHTML = errBox("Wprowadź klucz API OpenAI."); setVia("via-oai",null); return; }
+    setLoading("oai",true);
+    try{
+      const r = await fetchStatus("openai",{key, range});
+      setVia("via-oai", r.via);
+      if(!r.ok){
+        let msg = r.error || "Nieznany błąd";
+        if(r.error==="CORS"){
+          msg = 'Połączenie bezpośrednie z OpenAI jest zablokowane przez przeglądarkę (CORS) — potrzebne jest proxy.<br>• Jeśli wdrażałeś przez przeciągnięcie folderu na Netlify Drop — <b>funkcje serwerowe nie są tam wdrażane</b>. Użyj <b>Netlify CLI</b> (<code>netlify deploy --prod</code>) lub połącz repozytorium Git.<br>• Lub wklej adres własnego proxy w <b>Ustawieniach</b> (dołączony skrypt <b>cloudflare-worker-proxy.js</b> — wdrożenie przez wklejenie kodu, za darmo).<br>• Saldo sprawdzisz też bezpośrednio w <a href="https://platform.openai.com/billing" target="_blank" rel="noopener">panelu rozliczeniowym OpenAI</a>.';
+        }else if(r.status===401 || r.status===403){
+          msg = 'Ten klucz API nie ma uprawnień do odczytu kosztów (401/403). OpenAI ograniczyło programowy dostęp do danych rozliczeniowych.<br>Sprawdź saldo w <a href="https://platform.openai.com/billing" target="_blank" rel="noopener">panelu rozliczeniowym OpenAI</a> lub użyj klucza z uprawnieniami „All” (project-level / org).';
+        }else if(r.status===429){
+          msg = "Przekroczono limit żądań (429). Spróbuj za chwilę.";
+        }
+        resEl.innerHTML = errBox(msg);
+      }else{
+        resEl.innerHTML = renderOpenAI(r.data, range);
+      }
+    }catch(e){
+      resEl.innerHTML = errBox("Błąd połączenia: "+e.message);
+    }finally{
+      setLoading("oai",false);
+    }
+  }
+
+  function renderOpenAI(resp, range){
+    if(!resp) return errBox("OpenAI zwrócił pustą odpowiedź. Spróbuj ponownie za chwilę lub sprawdź <a href=\"https://platform.openai.com/billing\" target=\"_blank\" rel=\"noopener\">panel rozliczeniowy</a>.");
+    // response: { object:"list", data:[ {timestamp, line_items:[{name,cost}]} ], has_more }
+    const days = resp.data || resp.daily_costs || [];
+    let total = 0;
+    const byModel = {};
+    const daily = []; // {label, cost}
+    days.forEach(day=>{
+      let dayCost = 0;
+      (day.line_items||[]).forEach(li=>{
+        const c = Number(li.cost)||0;
+        total += c; dayCost += c;
+        const name = li.name || "inne";
+        byModel[name] = (byModel[name]||0) + c;
+      });
+      daily.push({ label: tsToDate(day.timestamp), cost: dayCost });
+    });
+
+    const rangeLabel = range==="ytd" ? "od początku roku" : "ostatnie "+range+" dni";
+    let html = '<div class="stat-big">'+fmtUSD(total)+' <small>zużyto w okresie</small></div>';
+    html += '<span class="chip paid">Zakres: '+rangeLabel+'</span>';
+    html += '<span class="chip free">'+days.length+' dni z danymi</span>';
+
+    // sparkline of daily costs
+    if(daily.length>1){
+      const max = Math.max(...daily.map(d=>d.cost), 0.0001);
+      html += '<div class="spark">'+daily.map(d=>'<i style="height:'+Math.max(4, d.cost/max*100)+'%" title="'+d.label+': '+fmtUSDFull(d.cost)+'"></i>').join("")+'</div>';
+      html += '<div class="spark-labels"><span>'+daily[0].label+'</span><span>dzienne koszty</span><span>'+daily[daily.length-1].label+'</span></div>';
+    }
+
+    // per-model breakdown (top 6)
+    const models = Object.entries(byModel).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    if(models.length){
+      const maxM = models[0][1] || 0.0001;
+      html += '<div class="breakdown"><h4>Rozbicie wg modelu (top '+models.length+')</h4>';
+      models.forEach(([name,cost])=>{
+        html += '<div class="bd-row"><span class="name" title="'+escapeHtml(name)+'">'+escapeHtml(name)+'</span><span class="track"><i style="width:'+(cost/maxM*100).toFixed(1)+'%"></i></span><span class="val">'+fmtUSDFull(cost)+'</span></div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div class="info-box">Uwaga: pokazane jest <b>zużycie</b> w wybranym okresie, a nie pozostałe saldo kredytów. OpenAI nie udostępnia bieżącego salda przez API — sprawdzisz je w <a href="https://platform.openai.com/billing" target="_blank" rel="noopener" style="color:#93c5fd">panelu rozliczeniowym</a>.</div>';
+    html += '<div class="updated">Stan na: '+new Date().toLocaleString("pl-PL")+'</div>';
+    return html;
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  /* ---------- buttons & auto-refresh ---------- */
+  $("btn-or").addEventListener("click", checkOpenRouter);
+  $("btn-oai").addEventListener("click", checkOpenAI);
+  $("key-or").addEventListener("keydown", e=>{ if(e.key==="Enter") checkOpenRouter(); });
+  $("key-oai").addEventListener("keydown", e=>{ if(e.key==="Enter") checkOpenAI(); });
+  $("checkAll").addEventListener("click", ()=>{ checkOpenRouter(); checkOpenAI(); });
+
+  let autoTimer = null;
+  $("autoRefresh").addEventListener("change", e=>{
+    if(e.target.checked){
+      autoTimer = setInterval(()=>{ checkOpenRouter(); checkOpenAI(); }, 60000);
+    }else{
+      clearInterval(autoTimer); autoTimer=null;
+    }
+  });
+
+  /* ---------- ustawienia: adres proxy ---------- */
+  if(proxyUrl) $("proxyUrl").value = proxyUrl;
+  $("settingsBtn").addEventListener("click", ()=>{
+    const p = $("settingsPanel");
+    p.style.display = p.style.display==="none" ? "block" : "none";
+  });
+  $("saveProxy").addEventListener("click", ()=>{
+    proxyUrl = $("proxyUrl").value.trim();
+    try { localStorage.setItem("ai-status-proxy", proxyUrl); } catch(e){}
+    $("saveProxy").textContent = "Zapisano ✓";
+    setTimeout(()=>{ $("saveProxy").textContent = "Zapisz"; }, 1500);
+    checkProxyAvailability();
+  });
+
+  /* ---------- diagnostyka: czy proxy jest dostępne ---------- */
+  async function checkProxyAvailability(){
+    try{
+      const res = await fetch(proxyUrlFor("openai"),{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({key:""})
+      });
+      // Funkcja/proxy istnieje → zwróci 400 (brak klucza). 404 = brak proxy.
+      $("proxyBanner").style.display = (res.status===404) ? "block" : "none";
+    }catch(e){
+      // Błąd sieci/CORS = proxy niedostępne
+      $("proxyBanner").style.display = "block";
+    }
+  }
+  checkProxyAvailability();
+
+  /* ---------- PWA install ---------- */
+  let deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", e=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    $("installBtn").style.display = "inline-flex";
+    $("installHint").style.display = "block";
+  });
+  $("installBtn").addEventListener("click", async ()=>{
+    if(!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    $("installBtn").style.display = "none";
+  });
+  window.addEventListener("appinstalled", ()=>{ $("installBtn").style.display="none"; $("installHint").style.display="none"; });
+
+  /* ---------- service worker ---------- */
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=>{
+      navigator.serviceWorker.register("sw.js").catch(()=>{});
+    });
+  }
+})();
+</script>
+</body>
+</html>

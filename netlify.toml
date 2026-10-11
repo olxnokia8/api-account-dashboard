@@ -1,0 +1,21 @@
+[build]
+  functions = "netlify/functions"
+  publish = "."
+
+# Funkcje nie wymagają budowania — są deployowane w postaci, w jakiej są.
+# Przy wdrożeniu przez przeciągnięcie folderu na https://app.netlify.com/drop
+# funkcje z katalogu netlify/functions są wykrywane automatycznie.
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
